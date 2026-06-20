@@ -1,0 +1,235 @@
+@import "tailwindcss";
+
+/* Self-hosted Google Fonts — see /fonts/kimi-fonts.css (@font-face block
+   for Cormorant Garamond + Noto Serif JP + Noto Sans JP + Noto Serif SC,
+   each with unicode-range chunking). Loaded via <link> in layout.tsx so
+   open-source / 大陆 build doesn't need to fetch Google at build time. */
+:root {
+  --font-cormorant: "Cormorant Garamond", Georgia, serif;
+  --font-noto-serif-jp: "Noto Serif JP", serif;
+  --font-noto-sans-jp: "Noto Sans JP", system-ui, sans-serif;
+  --font-noto-serif-sc: "Noto Serif SC", "Songti SC", "STSong", serif;
+  /* Baroque bg color — overriden by kimi-bg-color cookie via inline style on <html> */
+  --kimi-bg: #F8F8FF;
+}
+
+@theme {
+  /* Baroque palette — light base with gold + rose accents */
+  --color-base: #F8F8FF;
+  --color-deep-charcoal: #ede8f0;
+  --color-muted-gold: #c19a56;
+  --color-accent-warm: #b8785a;
+  --color-muted-rose: #9a6a72;
+  --color-deep-red: #8b3a3a;
+  --color-silver: #b8b0a8;
+  --color-text: #2a1e28;
+  --color-muted-grey: #7a6a72;
+
+  --font-serif: var(--font-cormorant), var(--font-noto-serif-jp), Georgia, serif;
+  --font-sans: var(--font-noto-sans-jp), system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-base);
+  color: var(--color-text);
+}
+
+/* EntryMotion FOUC gate. inline script sets `kimi-entry-pending` if user
+   never seen entry; hide all body children except the entry overlay
+   until EntryMotion timeline completes + removes class. */
+html.kimi-entry-pending body > *:not(.kimi-entry-motion-overlay) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* PullToRefresh — color tokens follow theme. Component reads var() so it
+   doesn't need to re-render on cookie change. */
+:root {
+  --kimi-ptr-color: #c19a56;
+  --kimi-ptr-color-armed: #b8785a;
+  --kimi-ptr-bg-tint: rgba(193, 154, 86, 0.10);
+  --kimi-ptr-glow: rgba(184, 120, 90, 0.40);
+}
+
+/* Day mode body bg — Baroque day uses the selected pastel bg color.
+   The actual bg color is set via CSS variable --kimi-bg which is
+   controlled by the kimi-bg-color cookie. */
+html[data-theme="day"],
+html[data-theme="day"] body {
+  background: var(--kimi-bg);
+  color: #2a1e28;
+}
+
+/* Night mode body bg — override --kimi-bg to deep dark.
+   All room pages read var(--kimi-bg) for background, so when
+   user clicks "夜", every page switches to dark instantly. */
+html:not([data-theme="day"]),
+html:not([data-theme="day"]) body {
+  background: #0a0506;
+  color: #d8d0c8;
+}
+html:not([data-theme="day"]) {
+  --kimi-bg: #0a0506;
+  --color-base: #0c0c0c;
+  --color-deep-charcoal: #1a1a1a;
+  --color-muted-gold: #b8a070;
+  --color-accent-warm: #c4a060;
+  --color-muted-rose: #9a7a7a;
+  --color-deep-red: #8b3a3a;
+  --color-silver: #b8b0a8;
+  --color-text: #d8d0c8;
+  --color-muted-grey: #8a8a8a;
+  /* PTR — night values */
+  --kimi-ptr-color: #b8814a;
+  --kimi-ptr-color-armed: #c4a060;
+  --kimi-ptr-bg-tint: rgba(184, 129, 74, 0.10);
+  --kimi-ptr-glow: rgba(196, 160, 96, 0.55);
+}
+
+html[data-theme="day"] {
+  /* color tokens — Rose Gothic day palette */
+  --color-base: var(--kimi-bg);
+  --color-deep-charcoal: #ede8f0;
+  --color-muted-gold: #8a6558;
+  --color-accent-warm: #a42b5e;
+  --color-muted-rose: #a42b5e;
+  --color-deep-red: #5a1820;
+  --color-silver: #a89890;
+  --color-text: #1a0e0a;
+  --color-muted-grey: #6a5a52;
+
+  /* PTR */
+  --kimi-ptr-color: #a42b5e;
+  --kimi-ptr-color-armed: #5a1820;
+  --kimi-ptr-bg-tint: rgba(164, 43, 94, 0.10);
+  --kimi-ptr-glow: rgba(90, 24, 32, 0.40);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-weight: 350;
+  letter-spacing: 0.01em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+}
+
+img {
+  filter: saturate(0.92) brightness(0.96);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--color-muted-gold);
+  color: #fff;
+}
+
+/* ---- page transition fade ---- */
+@keyframes kimi-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- micro-anim ① ③ ⑤ ---- */
+/* ① button hover scale + shadow */
+.kimi-btn-anim {
+  transition:
+    transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.kimi-btn-anim:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(193, 154, 86, 0.22);
+}
+.kimi-btn-anim:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+/* ③ card hover lift */
+.kimi-card-lift {
+  transition:
+    transform 240ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.kimi-card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* ⑤ rose tap pulse */
+@keyframes kimi-rose-pulse {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.kimi-rose-tap-active {
+  animation: kimi-rose-pulse 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  display: inline-block;
+}
+
+@keyframes kimi-pulse-dot {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+/* disc spin */
+@keyframes kimi-disc-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.kimi-disc-spin {
+  animation: kimi-disc-rotate 10s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kimi-disc-spin { animation: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-page-transition] {
+    animation: none !important;
+  }
+}
+
+/* ---- Baroque-specific: damask watermark behind content ---- */
+.kimi-baroque-damask {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23c19a56' stroke-width='0.3' opacity='0.12'%3E%3Cpath d='M40 8 C52 8 60 16 60 28 C60 40 52 48 40 48 C28 48 20 40 20 28 C20 16 28 8 40 8Z'/%3E%3Cpath d='M40 32 C48 32 54 38 54 46 C54 54 48 60 40 60 C32 60 26 54 26 46 C26 38 32 32 40 32Z'/%3E%3Ccircle cx='40' cy='28' r='2' fill='%23c19a56' opacity='0.08'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 80px 80px;
+}
+
+/* Baroque gold shimmer on interactive elements */
+.kimi-baroque-gold-glow {
+  transition: box-shadow 200ms ease;
+}
+.kimi-baroque-gold-glow:hover {
+  box-shadow: 0 0 12px rgba(193, 154, 86, 0.18), 0 0 4px rgba(193, 154, 86, 0.30);
+}
