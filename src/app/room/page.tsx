@@ -16,6 +16,7 @@ import { cookies } from "next/headers";
 import { resolveRoom, ROOM_LAYOUT_COOKIE, ROMAN } from "@/lib/room-blocks";
 import { getBgColor } from "@/lib/bg-color";
 import { type BgColorValue } from "@/lib/bg-color-constants";
+import { MomentsFab } from "@/components/MomentsFab";
 
 // Force dynamic rendering for real-time moon phase + bg color
 export const dynamic = "force-dynamic";
@@ -309,6 +310,7 @@ export default async function RoomPage({
         </div>
 
       </div>
+      <MomentsFab isDay={isDay} />
     </main>
   );
 }
