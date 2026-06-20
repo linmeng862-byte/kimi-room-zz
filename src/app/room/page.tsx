@@ -9,6 +9,7 @@ import {
 } from "@/components/BaroqueFlourish";
 import { getMoonPhase } from "@/lib/moon-phase";
 import { MoonPhaseSvg } from "@/components/MoonPhaseSvg";
+import { RoseBloomDial } from "@/components/RoseBloomDial";
 import { getTheme } from "@/lib/day-theme";
 import { ThemeToggleLink } from "@/components/ThemeToggle";
 import { BgColorPicker } from "@/components/BgColorPicker";
@@ -171,7 +172,7 @@ export default async function RoomPage({
             </div>
           </div>
 
-          {/* hero — tap → /chat. moon phase SVG */}
+          {/* hero — tap → /chat. day=rose, night=moon phase */}
           <div style={{ textAlign: "center", marginTop: 14 }}>
             <Link
               href="/chat"
@@ -185,7 +186,7 @@ export default async function RoomPage({
               }}
               className="kimi-moon-idle hover:scale-105 active:scale-95"
             >
-              <MoonPhaseSvg phase={moon.fraction} size={64} />
+              {isDay ? <RoseBloomDial size={64} /> : <MoonPhaseSvg phase={moon.fraction} size={64} />}
             </Link>
           </div>
 

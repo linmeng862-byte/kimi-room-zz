@@ -94,11 +94,12 @@ export async function llmChat(
     max_tokens: opts.maxTokens ?? 1024,
     stream: false,
   };
-  const res = await fetch(cfg.endpoint, {
+  const res = await fetch("/api/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
+      "X-LLM-Endpoint": cfg.endpoint,
+      "X-LLM-ApiKey": cfg.apiKey,
     },
     body: JSON.stringify(body),
   });
@@ -106,10 +107,13 @@ export async function llmChat(
     const errText = await res.text().catch(() => "");
     throw new Error(`LLM request failed (${res.status}): ${errText.slice(0, 200)}`);
   }
+  // Support both OpenAI and Anthropic response formats
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
+    content?: { type?: string; text?: string }[];
   };
-  const text = data.choices?.[0]?.message?.content ?? "";
+  const text = data.choices?.[0]?.message?.content ??
+    data.content?.find((c) => c.type === "text")?.text ?? "";
   return { text, raw: data };
 }
 
@@ -153,11 +157,12 @@ export async function llmGenerateWithImage(
     max_tokens: opts?.maxTokens ?? 2048,
     stream: false,
   };
-  const res = await fetch(cfg.endpoint, {
+  const res = await fetch("/api/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
+      "X-LLM-Endpoint": cfg.endpoint,
+      "X-LLM-ApiKey": cfg.apiKey,
     },
     body: JSON.stringify(body),
   });
@@ -165,10 +170,13 @@ export async function llmGenerateWithImage(
     const errText = await res.text().catch(() => "");
     throw new Error(`vision request failed (${res.status}): ${errText.slice(0, 200)}`);
   }
+  // Support both OpenAI and Anthropic response formats
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
+    content?: { type?: string; text?: string }[];
   };
-  return data.choices?.[0]?.message?.content ?? "";
+  return data.choices?.[0]?.message?.content ??
+    data.content?.find((c) => c.type === "text")?.text ?? "";
 }
 
 // Friendly Chinese message for LLM errors. Maps common patterns:
