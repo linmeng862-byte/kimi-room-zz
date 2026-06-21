@@ -136,7 +136,20 @@ export async function llmChat(
   return { text, raw: data };
 }
 
+const BRIDGE_PORT_KEY = "kimi-bridge-port";
+const DEFAULT_BRIDGE_PORT = "3928";
+
+export function getBridgePort(): string {
+  return readLS(BRIDGE_PORT_KEY) || DEFAULT_BRIDGE_PORT;
+}
+
+export function setBridgePort(port: string): void {
+  writeLS(BRIDGE_PORT_KEY, port);
+}
+
 // Claude Code CLI backend — no API key needed, uses local subscription
+// When running on localhost (npm run dev), calls /api/claude-code (server route)
+// When on Netlify, calls localhost bridge (http://localhost:3928/ask)
 async function llmChatViaClaudeCode(
   messages: ChatMessage[],
   opts: ChatOptions = {},
@@ -156,7 +169,14 @@ async function llmChatViaClaudeCode(
   const systemPrompt = systemParts.length > 0 ? systemParts.join("\n\n") : undefined;
   const prompt = conversationParts.join("\n\n");
 
-  const res = await fetch("/api/claude-code", {
+  const isLocalNextDev = typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+  const url = isLocalNextDev
+    ? "/api/claude-code"               // local: use Next.js server route
+    : `http://localhost:${getBridgePort()}/ask`;  // Netlify: use bridge
+
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

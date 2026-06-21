@@ -17,6 +17,8 @@ import {
   setLLMConfig,
   getBackendMode,
   setBackendMode as setBackendModeLS,
+  getBridgePort,
+  setBridgePort as setBridgePortLS,
   type LLMConfig,
   type BackendMode,
 } from "@/lib/llm-client";
@@ -70,6 +72,7 @@ export default function SettingsPage() {
   const [userName, setUserNameState] = useState("you");
   const [llm, setLLM] = useState<LLMConfig>({ apiKey: "", endpoint: "", model: "" });
   const [backendMode, setBackendMode] = useState<BackendMode>("api");
+  const [bridgePort, setBridgePortState] = useState("3928");
   const [selfPreview, setSelfPreview] = useState<string | null>(null);
   const [otherPreview, setOtherPreview] = useState<string | null>(null);
   const [meds, setMeds] = useState<MedButton[]>([]);
@@ -84,6 +87,7 @@ export default function SettingsPage() {
     setUserNameState(getUserName());
     setLLM(getLLMConfig());
     setBackendMode(getBackendMode());
+    setBridgePortState(getBridgePort());
     setMeds(loadMedButtons());
     setDemoOn(isDemoOn());
     refreshPortraits();
@@ -130,6 +134,7 @@ export default function SettingsPage() {
     setUserName(userName);
     setLLMConfig(llm);
     setBackendModeLS(backendMode);
+    setBridgePortLS(bridgePort);
     flash("保存了");
   }
 
@@ -268,9 +273,34 @@ export default function SettingsPage() {
               </button>
             </div>
             {backendMode === "claude-code" && (
-              <span className={helpCls} style={{ color: "#6b8e6b" }}>
-                ✅ 走你本机的 Claude Code 订阅，免 API Key · 需本地运行 <code>npm run dev</code> + 已安装 <code>claude</code> CLI
-              </span>
+              <div className="flex flex-col gap-2 p-3 border border-current/20 rounded text-xs">
+                <span style={{ color: "#6b8e6b" }}>
+                  ✅ 走你本机的 Claude Code 订阅，免 API Key
+                </span>
+                <span className={helpCls}>
+                  <strong>使用步骤：</strong>
+                </span>
+                <ol className="list-decimal list-inside flex flex-col gap-1 text-muted-grey">
+                  <li>安装 CLI: <code className="bg-current/5 px-1">npm i -g @anthropic-ai/claude-code</code></li>
+                  <li>登录: 终端运行 <code className="bg-current/5 px-1">claude</code>，按提示 OAuth</li>
+                  <li>启动桥接: <code className="bg-current/5 px-1">node bridge.mjs</code></li>
+                  <li>保存本设置 → 开聊！</li>
+                </ol>
+                <span className="text-muted-grey mt-1">
+                  本地开发 (localhost) 直接走服务端路由；Netlify 部署走 <code>localhost:3928</code> 桥接
+                </span>
+                {/* Bridge port config for Netlify users */}
+                <label className="flex flex-col gap-1 mt-1">
+                  <span className={helpCls}>桥接端口 (默认 3928)</span>
+                  <input
+                    type="text"
+                    value={bridgePort}
+                    onChange={(e) => setBridgePortState(e.target.value)}
+                    placeholder="3928"
+                    className={`${inputCls} font-mono text-sm w-24`}
+                  />
+                </label>
+              </div>
             )}
           </div>
 
