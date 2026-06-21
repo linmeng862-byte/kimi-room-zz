@@ -15,9 +15,13 @@
 const KEY_API_KEY = "kimi-llm-api-key";
 const KEY_ENDPOINT = "kimi-llm-endpoint";
 const KEY_MODEL = "kimi-llm-model";
+const KEY_BACKEND_MODE = "kimi-llm-backend-mode";
 
 const DEFAULT_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-4o-mini";
+
+// Backend mode: "api" = remote API (OpenAI/Anthropic/etc), "claude-code" = local CLI
+export type BackendMode = "api" | "claude-code";
 
 function readLS(key: string): string {
   if (typeof window === "undefined") return "";
@@ -51,6 +55,14 @@ export function getLLMConfig(): LLMConfig {
   };
 }
 
+export function getBackendMode(): BackendMode {
+  return (readLS(KEY_BACKEND_MODE) as BackendMode) || "api";
+}
+
+export function setBackendMode(mode: BackendMode): void {
+  writeLS(KEY_BACKEND_MODE, mode);
+}
+
 export function setLLMConfig(c: Partial<LLMConfig>): void {
   if (c.apiKey !== undefined) writeLS(KEY_API_KEY, c.apiKey);
   if (c.endpoint !== undefined) writeLS(KEY_ENDPOINT, c.endpoint);
@@ -58,6 +70,7 @@ export function setLLMConfig(c: Partial<LLMConfig>): void {
 }
 
 export function isLLMConfigured(): boolean {
+  if (getBackendMode() === "claude-code") return true; // CLI mode needs no API key
   return !!getLLMConfig().apiKey;
 }
 
@@ -81,6 +94,12 @@ export async function llmChat(
   messages: ChatMessage[],
   opts: ChatOptions = {},
 ): Promise<ChatResult> {
+  // --- Claude Code (local CLI) mode ---
+  if (getBackendMode() === "claude-code") {
+    return llmChatViaClaudeCode(messages, opts);
+  }
+
+  // --- Remote API mode ---
   const cfg = getLLMConfig();
   if (!cfg.apiKey) {
     throw new Error(
@@ -117,6 +136,44 @@ export async function llmChat(
   return { text, raw: data };
 }
 
+// Claude Code CLI backend — no API key needed, uses local subscription
+async function llmChatViaClaudeCode(
+  messages: ChatMessage[],
+  opts: ChatOptions = {},
+): Promise<ChatResult> {
+  // Extract system messages as separate systemPrompt
+  const systemParts: string[] = [];
+  const conversationParts: string[] = [];
+  for (const m of messages) {
+    if (m.role === "system") {
+      systemParts.push(m.content);
+    } else if (m.role === "user") {
+      conversationParts.push(`[User]: ${m.content}`);
+    } else if (m.role === "assistant") {
+      conversationParts.push(`[Assistant]: ${m.content}`);
+    }
+  }
+  const systemPrompt = systemParts.length > 0 ? systemParts.join("\n\n") : undefined;
+  const prompt = conversationParts.join("\n\n");
+
+  const res = await fetch("/api/claude-code", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      systemPrompt,
+      maxTurns: 1,
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Claude Code request failed (${res.status}): ${errText.slice(0, 300)}`);
+  }
+  const data = (await res.json()) as { text?: string; error?: string };
+  if (data.error) throw new Error(data.error);
+  return { text: data.text ?? "" };
+}
+
 // Convenience · single-shot prompt → text (system + user message format).
 export async function llmGenerate(
   prompt: string,
@@ -139,6 +196,22 @@ export async function llmGenerateWithImage(
   system?: string,
   opts?: ChatOptions,
 ): Promise<string> {
+  // --- Claude Code (local CLI) mode for vision ---
+  if (getBackendMode() === "claude-code") {
+    // Claude Code CLI supports vision via prompt — describe the image in text
+    // Note: CLI mode has limited vision support, falls back to text-only
+    const visionPrompt = `${prompt}\n\n[Note: Image attached but Claude Code CLI mode has limited vision support. Using text-only mode.]`;
+    const r = await llmChat(
+      [
+        ...(system ? [{ role: "system" as const, content: system }] : []),
+        { role: "user" as const, content: visionPrompt },
+      ],
+      opts,
+    );
+    return r.text;
+  }
+
+  // --- Remote API mode ---
   const cfg = getLLMConfig();
   if (!cfg.apiKey) {
     throw new Error("LLM API key not configured. Open settings.");

@@ -15,7 +15,10 @@ import { APP_TITLE_DEFAULT, getAppTitle, setAppTitle } from "@/lib/app-title";
 import {
   getLLMConfig,
   setLLMConfig,
+  getBackendMode,
+  setBackendMode as setBackendModeLS,
   type LLMConfig,
+  type BackendMode,
 } from "@/lib/llm-client";
 import {
   clearOtherPortrait,
@@ -66,6 +69,7 @@ export default function SettingsPage() {
   const [charName, setCharNameState] = useState(CHAR_NAME_DEFAULT);
   const [userName, setUserNameState] = useState("you");
   const [llm, setLLM] = useState<LLMConfig>({ apiKey: "", endpoint: "", model: "" });
+  const [backendMode, setBackendMode] = useState<BackendMode>("api");
   const [selfPreview, setSelfPreview] = useState<string | null>(null);
   const [otherPreview, setOtherPreview] = useState<string | null>(null);
   const [meds, setMeds] = useState<MedButton[]>([]);
@@ -79,6 +83,7 @@ export default function SettingsPage() {
     setCharNameState(getCharName());
     setUserNameState(getUserName());
     setLLM(getLLMConfig());
+    setBackendMode(getBackendMode());
     setMeds(loadMedButtons());
     setDemoOn(isDemoOn());
     refreshPortraits();
@@ -124,6 +129,7 @@ export default function SettingsPage() {
     setCharName(charName);
     setUserName(userName);
     setLLMConfig(llm);
+    setBackendModeLS(backendMode);
     flash("保存了");
   }
 
@@ -241,6 +247,35 @@ export default function SettingsPage() {
         {/* ── LLM ───────────────────────────────────────── */}
         <fieldset className="flex flex-col gap-4">
           <legend className={labelCls}>LLM 接口</legend>
+
+          {/* Backend mode toggle */}
+          <div className="flex flex-col gap-2">
+            <span className={helpCls}>后端模式 · 选 Claude Code 走本地 CLI，不用 API Key</span>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setBackendMode("api")}
+                className={`${buttonCls} ${backendMode === "api" ? "border-current font-bold" : "border-current/30"}`}
+              >
+                API 模式
+              </button>
+              <button
+                type="button"
+                onClick={() => setBackendMode("claude-code")}
+                className={`${buttonCls} ${backendMode === "claude-code" ? "border-current font-bold" : "border-current/30"}`}
+              >
+                Claude Code (本地)
+              </button>
+            </div>
+            {backendMode === "claude-code" && (
+              <span className={helpCls} style={{ color: "#6b8e6b" }}>
+                ✅ 走你本机的 Claude Code 订阅，免 API Key · 需本地运行 <code>npm run dev</code> + 已安装 <code>claude</code> CLI
+              </span>
+            )}
+          </div>
+
+          {/* API fields — hidden when claude-code mode */}
+          {backendMode === "api" && (<>
           <label className="flex flex-col gap-1">
             <span className={helpCls}>endpoint · OpenAI 格式 chat completion</span>
             <input
@@ -272,6 +307,7 @@ export default function SettingsPage() {
               className={`${inputCls} font-mono text-sm`}
             />
           </label>
+          </>)}
         </fieldset>
 
         <button type="submit" className={`${buttonCls} self-start`}>
