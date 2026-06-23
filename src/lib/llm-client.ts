@@ -16,12 +16,16 @@ const KEY_API_KEY = "kimi-llm-api-key";
 const KEY_ENDPOINT = "kimi-llm-endpoint";
 const KEY_MODEL = "kimi-llm-model";
 const KEY_BACKEND_MODE = "kimi-llm-backend-mode";
+const KEY_API_FORMAT = "kimi-llm-api-format";
 
 const DEFAULT_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 // Backend mode: "api" = remote API (OpenAI/Anthropic/etc), "claude-code" = local CLI
 export type BackendMode = "api" | "claude-code";
+
+// API format: "openai" = OpenAI-compatible (most relay/proxy services), "anthropic" = native Anthropic
+export type ApiFormat = "openai" | "anthropic";
 
 function readLS(key: string): string {
   if (typeof window === "undefined") return "";
@@ -45,6 +49,7 @@ export type LLMConfig = {
   apiKey: string;
   endpoint: string;
   model: string;
+  apiFormat: ApiFormat;
 };
 
 export function getLLMConfig(): LLMConfig {
@@ -52,6 +57,7 @@ export function getLLMConfig(): LLMConfig {
     apiKey: readLS(KEY_API_KEY),
     endpoint: readLS(KEY_ENDPOINT) || DEFAULT_ENDPOINT,
     model: readLS(KEY_MODEL) || DEFAULT_MODEL,
+    apiFormat: getApiFormat(),
   };
 }
 
@@ -63,10 +69,19 @@ export function setBackendMode(mode: BackendMode): void {
   writeLS(KEY_BACKEND_MODE, mode);
 }
 
+export function getApiFormat(): ApiFormat {
+  return (readLS(KEY_API_FORMAT) as ApiFormat) || "openai";
+}
+
+export function setApiFormat(format: ApiFormat): void {
+  writeLS(KEY_API_FORMAT, format);
+}
+
 export function setLLMConfig(c: Partial<LLMConfig>): void {
   if (c.apiKey !== undefined) writeLS(KEY_API_KEY, c.apiKey);
   if (c.endpoint !== undefined) writeLS(KEY_ENDPOINT, c.endpoint);
   if (c.model !== undefined) writeLS(KEY_MODEL, c.model);
+  if (c.apiFormat !== undefined) writeLS(KEY_API_FORMAT, c.apiFormat);
 }
 
 export function isLLMConfigured(): boolean {
@@ -119,6 +134,7 @@ export async function llmChat(
       "Content-Type": "application/json",
       "X-LLM-Endpoint": cfg.endpoint,
       "X-LLM-ApiKey": cfg.apiKey,
+      "X-LLM-Format": cfg.apiFormat,
     },
     body: JSON.stringify(body),
   });
@@ -256,6 +272,7 @@ export async function llmGenerateWithImage(
       "Content-Type": "application/json",
       "X-LLM-Endpoint": cfg.endpoint,
       "X-LLM-ApiKey": cfg.apiKey,
+      "X-LLM-Format": cfg.apiFormat,
     },
     body: JSON.stringify(body),
   });

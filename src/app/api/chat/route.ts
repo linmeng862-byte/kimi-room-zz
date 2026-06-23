@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // LLM proxy route — avoids browser CORS by proxying through Next.js API.
-// Client sends the real endpoint + key in custom headers;
-// this route forwards to the actual LLM API (OpenAI or Anthropic format).
+// Client sends the real endpoint + key + format in custom headers;
+// this route forwards to the actual LLM API.
+//
+// X-LLM-Format header: "openai" (default) or "anthropic"
+//   - "openai":       pass body as-is, use Bearer auth  (most relay/proxy services)
+//   - "anthropic":    convert to Anthropic format, use x-api-key auth
 
 const ANTROPIC_VERSION = "2023-06-01";
 
@@ -11,13 +15,6 @@ type OpenAIMessage = {
   content: string | unknown[];
 };
 type AnthropicMessage = { role: "user" | "assistant"; content: string };
-
-function isOpenAI(endpoint: string): boolean {
-  // Anthropic endpoints contain "anthropic"
-  const u = endpoint.toLowerCase();
-  if (u.includes("anthropic")) return false;
-  return true; // default OpenAI-compatible
-}
 
 function convertToAnthropic(
   body: Record<string, unknown>,
@@ -51,6 +48,7 @@ function convertToAnthropic(
 export async function POST(req: NextRequest) {
   const endpoint = req.headers.get("X-LLM-Endpoint");
   const apiKey = req.headers.get("X-LLM-ApiKey");
+  const format = req.headers.get("X-LLM-Format") || "openai";
 
   if (!endpoint || !apiKey) {
     return NextResponse.json(
@@ -66,19 +64,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const isOAIFmt = isOpenAI(endpoint);
-  const forwardBody = isOAIFmt ? body : convertToAnthropic(body);
+  // Use the explicit format from client — no more URL-based guessing!
+  const isAnthropic = format === "anthropic";
+  const forwardBody = isAnthropic ? convertToAnthropic(body) : body;
 
   // Build headers for the upstream API
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
 
-  if (isOAIFmt) {
-    headers["Authorization"] = `Bearer ${apiKey}`;
-  } else {
+  if (isAnthropic) {
     headers["x-api-key"] = apiKey;
     headers["anthropic-version"] = ANTROPIC_VERSION;
+  } else {
+    headers["Authorization"] = `Bearer ${apiKey}`;
   }
 
   try {
@@ -92,12 +91,21 @@ export async function POST(req: NextRequest) {
     const contentType = upstream.headers.get("content-type") ?? "application/json";
     const buf = await upstream.arrayBuffer();
 
+    // Log upstream errors for debugging
+    if (!upstream.ok) {
+      const bodyPreview = Buffer.from(buf).toString("utf-8").slice(0, 500);
+      console.error(
+        `[api/chat] upstream ${upstream.status} from ${endpoint}: ${bodyPreview}`,
+      );
+    }
+
     return new NextResponse(buf, {
       status: upstream.status,
       headers: {
         "content-type": contentType,
         "access-control-allow-origin": "*",
-        "access-control-allow-headers": "Content-Type, X-LLM-Endpoint, X-LLM-ApiKey",
+        "access-control-allow-headers":
+          "Content-Type, X-LLM-Endpoint, X-LLM-ApiKey, X-LLM-Format",
       },
     });
   } catch (err) {
@@ -113,7 +121,8 @@ export async function OPTIONS() {
     headers: {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "POST, OPTIONS",
-      "access-control-allow-headers": "Content-Type, X-LLM-Endpoint, X-LLM-ApiKey",
+      "access-control-allow-headers":
+        "Content-Type, X-LLM-Endpoint, X-LLM-ApiKey, X-LLM-Format",
     },
   });
 }

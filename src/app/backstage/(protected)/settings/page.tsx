@@ -21,6 +21,7 @@ import {
   setBridgePort as setBridgePortLS,
   type LLMConfig,
   type BackendMode,
+  type ApiFormat,
 } from "@/lib/llm-client";
 import {
   clearOtherPortrait,
@@ -70,7 +71,7 @@ export default function SettingsPage() {
   const [title, setTitle] = useState(APP_TITLE_DEFAULT);
   const [charName, setCharNameState] = useState(CHAR_NAME_DEFAULT);
   const [userName, setUserNameState] = useState("you");
-  const [llm, setLLM] = useState<LLMConfig>({ apiKey: "", endpoint: "", model: "" });
+  const [llm, setLLM] = useState<LLMConfig>({ apiKey: "", endpoint: "", model: "", apiFormat: "openai" });
   const [backendMode, setBackendMode] = useState<BackendMode>("api");
   const [bridgePort, setBridgePortState] = useState("3928");
   const [selfPreview, setSelfPreview] = useState<string | null>(null);
@@ -306,13 +307,43 @@ export default function SettingsPage() {
 
           {/* API fields — hidden when claude-code mode */}
           {backendMode === "api" && (<>
+          {/* API format selector */}
+          <div className="flex flex-col gap-2">
+            <span className={helpCls}>API 格式 · 中转站/代理一般选 OpenAI</span>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setLLM({ ...llm, apiFormat: "openai" })}
+                className={`${buttonCls} ${llm.apiFormat === "openai" ? "border-current font-bold" : "border-current/30"}`}
+              >
+                OpenAI 兼容
+              </button>
+              <button
+                type="button"
+                onClick={() => setLLM({ ...llm, apiFormat: "anthropic" })}
+                className={`${buttonCls} ${llm.apiFormat === "anthropic" ? "border-current font-bold" : "border-current/30"}`}
+              >
+                Anthropic 原生
+              </button>
+            </div>
+            {llm.apiFormat === "openai" && (
+              <span className="text-muted-grey text-xs">
+                绝大多数中转站、OpenRouter、DeepSeek、Ollama 等都用 OpenAI 格式
+              </span>
+            )}
+            {llm.apiFormat === "anthropic" && (
+              <span className="text-muted-grey text-xs">
+                直连 api.anthropic.com 时选此项 · 代码自动转换格式
+              </span>
+            )}
+          </div>
           <label className="flex flex-col gap-1">
-            <span className={helpCls}>endpoint · OpenAI 格式 chat completion</span>
+            <span className={helpCls}>endpoint · {llm.apiFormat === "openai" ? "OpenAI 格式" : "Anthropic 格式"} chat completion</span>
             <input
               type="url"
               value={llm.endpoint}
               onChange={(e) => setLLM({ ...llm, endpoint: e.target.value })}
-              placeholder="https://api.openai.com/v1/chat/completions"
+              placeholder={llm.apiFormat === "openai" ? "https://api.openai.com/v1/chat/completions" : "https://api.anthropic.com/v1/messages"}
               className={`${inputCls} font-mono text-sm`}
             />
           </label>
@@ -322,7 +353,7 @@ export default function SettingsPage() {
               type="text"
               value={llm.model}
               onChange={(e) => setLLM({ ...llm, model: e.target.value })}
-              placeholder="gpt-4o-mini"
+              placeholder={llm.apiFormat === "openai" ? "gpt-4o-mini" : "claude-sonnet-4-20250514"}
               className={`${inputCls} font-mono text-sm`}
             />
           </label>
